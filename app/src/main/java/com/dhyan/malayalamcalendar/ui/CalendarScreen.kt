@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -409,7 +410,7 @@ fun GlassPill(
     Box(
         modifier = Modifier
             .clip(pillShape)
-            .background(if (isActive) LiquidSelectedBrush else GlassFillSubtle)
+            .background(if (isActive) LiquidSelectedBrush else SolidColor(GlassFillSubtle))
             .border(1.dp, if (isActive) GlassBorderHighlight else GlassBorderSubtle, pillShape)
             .clickable { onClick() }
             .padding(horizontal = 10.dp, vertical = 5.dp),
