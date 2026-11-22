@@ -103,132 +103,87 @@ fun CalendarScreen() {
         } else {
             // Monthly Calendar Grid matching template
             Column(modifier = Modifier.fillMaxSize()) {
-                // Top App Bar
+                // Simplified Single Clean Top Bar (Month Navigation Banner)
                 Surface(
                     color = TempleMaroon,
-                    shadowElevation = 3.dp
+                    shadowElevation = 2.dp
                 ) {
-                    Row(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .statusBarsPadding()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = 8.dp, vertical = 10.dp)
                     ) {
-                        Text(
-                            text = "മലയാളം കലണ്ടർ",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Jump to Today Button
-                            val isAtToday = selectedYear == initialYear && selectedMonth == initialMonth
-                            TopBarPill(
-                                text = "ഇന്ന്",
-                                isActive = isAtToday,
-                                onClick = {
-                                    selectedYear = initialYear
-                                    selectedMonth = initialMonth
-                                }
-                            )
-
-                            Spacer(modifier = Modifier.width(6.dp))
-
-                            // Year Selector: 2026 / 2027
-                            TopBarPill(
-                                text = "2026",
-                                isActive = selectedYear == 2026,
-                                onClick = { selectedYear = 2026 }
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            TopBarPill(
-                                text = "2027",
-                                isActive = selectedYear == 2027,
-                                onClick = { selectedYear = 2027 }
-                            )
-                        }
-                    }
-                }
-
-                // Month Navigation Banner
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(TempleMaroonDark)
-                        .padding(horizontal = 8.dp, vertical = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Previous Month Button (<)
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clickable {
-                                    if (selectedMonth > 1) {
-                                        selectedMonth--
-                                    } else if (selectedYear > 2026) {
-                                        selectedYear--
-                                        selectedMonth = 12
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "❮",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
-                            )
-                        }
-
-                        // Centered Month & Kollam Subtitle
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            val currentMonthName = monthNamesMl[selectedMonth - 1]
-                            val kollamSubtitle = CalendarRepository.getKollamSubtitle(selectedYear, selectedMonth)
-
-                            Text(
-                                text = "$currentMonthName $selectedYear",
-                                fontSize = 21.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            if (kollamSubtitle.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(2.dp))
+                            // Previous Month Button (<)
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clickable {
+                                        if (selectedMonth > 1) {
+                                            selectedMonth--
+                                        } else if (selectedYear > 2026) {
+                                            selectedYear--
+                                            selectedMonth = 12
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Text(
-                                    text = kollamSubtitle,
-                                    fontSize = 13.5.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color.White.copy(alpha = 0.95f)
+                                    text = "❮",
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
                                 )
                             }
-                        }
 
-                        // Next Month Button (>)
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clickable {
-                                    if (selectedMonth < 12) {
-                                        selectedMonth++
-                                    } else if (selectedYear < 2027) {
-                                        selectedYear++
-                                        selectedMonth = 1
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "❯",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
-                            )
+                            // Centered Month & Kollam Subtitle
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                val currentMonthName = monthNamesMl[selectedMonth - 1]
+                                val kollamSubtitle = CalendarRepository.getKollamSubtitle(selectedYear, selectedMonth)
+
+                                Text(
+                                    text = "$currentMonthName $selectedYear",
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                if (kollamSubtitle.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = kollamSubtitle,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White.copy(alpha = 0.95f)
+                                    )
+                                }
+                            }
+
+                            // Next Month Button (>)
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clickable {
+                                        if (selectedMonth < 12) {
+                                            selectedMonth++
+                                        } else if (selectedYear < 2027) {
+                                            selectedYear++
+                                            selectedMonth = 1
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "❯",
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
+                                )
+                            }
                         }
                     }
                 }
@@ -421,33 +376,6 @@ fun DimmedDayCell(dayNumber: Int) {
     }
 }
 
-@Composable
-fun TopBarPill(
-    text: String,
-    isActive: Boolean,
-    onClick: () -> Unit
-) {
-    val pillShape = RoundedCornerShape(14.dp)
-    val bg = if (isActive) Color.White else Color(0x33FFFFFF)
-    val textCol = if (isActive) TempleMaroon else Color.White
-
-    Box(
-        modifier = Modifier
-            .clip(pillShape)
-            .background(bg)
-            .clickable { onClick() }
-            .padding(horizontal = 9.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            fontSize = 11.5.sp,
-            fontWeight = FontWeight.Bold,
-            color = textCol
-        )
-    }
-}
-
 // -------------------------------------------------------------
 // Day Details View matching unnamed (1), (2), (4).webp
 // -------------------------------------------------------------
@@ -469,33 +397,26 @@ fun DateDetailsView(
             .fillMaxSize()
             .background(Color.White)
     ) {
-        // Maroon Top Bar with Back Arrow and Title
+        // Simple Clean Top Bar with Back Arrow
         Surface(
             color = TempleMaroon,
-            shadowElevation = 4.dp
+            shadowElevation = 2.dp
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 12.dp),
+                    .padding(horizontal = 6.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
                     Text(
                         text = "←",
-                        fontSize = 26.sp,
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
                 }
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "മലയാളം കലണ്ടർ",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
             }
         }
 
