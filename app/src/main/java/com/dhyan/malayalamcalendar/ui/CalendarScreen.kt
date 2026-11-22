@@ -38,10 +38,18 @@ import java.util.Calendar
 fun CalendarScreen() {
     val context = LocalContext.current
     val todayCal = remember { Calendar.getInstance() }
+    val initialYear = remember {
+        val y = todayCal.get(Calendar.YEAR)
+        if (y in 2026..2027) y else 2026
+    }
+    val initialMonth = remember {
+        val y = todayCal.get(Calendar.YEAR)
+        if (y in 2026..2027) todayCal.get(Calendar.MONTH) + 1 else 1
+    }
 
     var isLightMode by remember { mutableStateOf(true) }
-    var selectedYear by remember { mutableIntStateOf(2026) }
-    var selectedMonth by remember { mutableIntStateOf(1) } // 1-12
+    var selectedYear by remember { mutableIntStateOf(initialYear) }
+    var selectedMonth by remember { mutableIntStateOf(initialMonth) } // 1-12
     var selectedDay by remember { mutableStateOf<DayPanchang?>(null) }
     var isMalayalam by remember { mutableStateOf(true) }
 
@@ -79,11 +87,8 @@ fun CalendarScreen() {
     }
     val glassCardBrush = if (isLightMode) LightGlassCardBrush else GlassCardBrush
     val glassBorderBrush = if (isLightMode) LightGlassBorderBrush else GlassBorderBrush
-    val glassFill = if (isLightMode) LightGlassFill else GlassFill
     val glassFillSubtle = if (isLightMode) LightGlassFillSubtle else GlassFillSubtle
-    val textPrimary = if (isLightMode) LightTextPrimary else TextLiquidPrimary
     val textSecondary = if (isLightMode) LightTextSecondary else TextLiquidSecondary
-    val textMuted = if (isLightMode) LightTextMuted else TextLiquidMuted
     val textGold = if (isLightMode) LightTextGold else TextLiquidGold
     val titleMaroon = if (isLightMode) LightTextMaroon else TextLiquidPrimary
 
@@ -153,6 +158,20 @@ fun CalendarScreen() {
                             }
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                // Jump to Today Button
+                                val isAtToday = selectedYear == initialYear && selectedMonth == initialMonth
+                                GlassPill(
+                                    text = if (isMalayalam) "ഇന്ന്" else "Today",
+                                    isActive = isAtToday,
+                                    isLightMode = isLightMode,
+                                    onClick = {
+                                        selectedYear = initialYear
+                                        selectedMonth = initialMonth
+                                    }
+                                )
+
+                                Spacer(modifier = Modifier.width(4.dp))
+
                                 // Theme Toggle Pill (☀️ Light / 🌙 Dark)
                                 GlassPill(
                                     text = if (isLightMode) "☀️" else "🌙",
@@ -161,7 +180,7 @@ fun CalendarScreen() {
                                     onClick = { isLightMode = !isLightMode }
                                 )
 
-                                Spacer(modifier = Modifier.width(5.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
 
                                 // Language Switch Pill
                                 GlassPill(
@@ -171,7 +190,7 @@ fun CalendarScreen() {
                                     onClick = { isMalayalam = !isMalayalam }
                                 )
 
-                                Spacer(modifier = Modifier.width(5.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
 
                                 // Year Switch Pills
                                 GlassPill(
@@ -356,14 +375,48 @@ fun LiquidGlassDayCell(
     onClick: () -> Unit
 ) {
     val cellShape = RoundedCornerShape(14.dp)
-    val dayCellBrush = if (isSelected) LiquidSelectedBrush
-    else if (isLightMode) LightGlassGradientBrush
-    else GlassGradientBrush
 
-    val dayCellBorderBrush = if (isSelected) Brush.linearGradient(listOf(Color.White, LiquidGold))
-    else if (isToday) Brush.linearGradient(listOf(LiquidGold, Color(0xFFFBBF24)))
-    else if (isLightMode) LightGlassBorderBrush
-    else GlassBorderBrush
+    // Vibrant background brush when selected, glowing warm amber glass when isToday, or frosted glass
+    val dayCellBrush = if (isSelected) {
+        LiquidSelectedBrush
+    } else if (isToday) {
+        if (isLightMode) {
+            Brush.verticalGradient(
+                listOf(
+                    Color(0xFFFEF3C7),
+                    Color(0xFFFDE68A).copy(alpha = 0.85f)
+                )
+            )
+        } else {
+            Brush.verticalGradient(
+                listOf(
+                    Color(0x55F59E0B),
+                    Color(0x30FBBF24)
+                )
+            )
+        }
+    } else if (isLightMode) {
+        LightGlassGradientBrush
+    } else {
+        GlassGradientBrush
+    }
+
+    // Prominent glowing border: 2dp gold when today, 2dp white-gold when selected
+    val dayCellBorderBrush = if (isSelected) {
+        Brush.linearGradient(listOf(Color.White, LiquidGold))
+    } else if (isToday) {
+        Brush.linearGradient(
+            listOf(
+                Color(0xFFF59E0B),
+                Color(0xFFFDE68A),
+                Color(0xFFF59E0B)
+            )
+        )
+    } else if (isLightMode) {
+        LightGlassBorderBrush
+    } else {
+        GlassBorderBrush
+    }
 
     Box(
         modifier = Modifier
@@ -372,14 +425,25 @@ fun LiquidGlassDayCell(
             .clip(cellShape)
             .background(dayCellBrush)
             .border(
-                width = if (isToday || isSelected) 1.5.dp else 1.dp,
+                width = if (isToday || isSelected) 2.dp else 1.dp,
                 brush = dayCellBorderBrush,
                 shape = cellShape
             )
             .clickable { onClick() }
             .padding(4.dp)
     ) {
-        // Top Row: Malayalam Date (Left) and Festival Dot (Right)
+        // Glowing halo behind day number when isToday
+        if (isToday && !isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(if (isLightMode) Color(0x3DF59E0B) else Color(0x40FBBF24))
+                    .align(Alignment.Center)
+            )
+        }
+
+        // Top Row: Malayalam Date (Left) and Festival / TODAY Badge (Right)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -391,6 +455,7 @@ fun LiquidGlassDayCell(
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (isSelected) Color.White
+                            else if (isToday) Color(0xFFB45309)
                             else if (isLightMode) LightTextMaroon
                             else TextLiquidGold
                 )
@@ -398,13 +463,33 @@ fun LiquidGlassDayCell(
                 Spacer(modifier = Modifier.width(4.dp))
             }
 
-            if (day.festivals.isNotEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(if (isSelected) Color.White else SundayRed)
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // "TODAY" micro-badge
+                if (isToday && !isSelected) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFFF59E0B))
+                            .padding(horizontal = 3.dp, vertical = 1.dp)
+                    ) {
+                        Text(
+                            text = "TODAY",
+                            fontSize = 6.5.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(2.dp))
+                }
+
+                if (day.festivals.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(if (isSelected) Color.White else SundayRed)
+                    )
+                }
             }
         }
 
@@ -414,6 +499,7 @@ fun LiquidGlassDayCell(
             fontSize = 19.sp,
             fontWeight = FontWeight.ExtraBold,
             color = if (isSelected) Color.White
+                    else if (isToday) (if (isLightMode) Color(0xFF92400E) else LiquidGold)
                     else if (isSunday) SundayRed
                     else if (isLightMode) LightTextPrimary
                     else TextLiquidPrimary,
@@ -428,6 +514,7 @@ fun LiquidGlassDayCell(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = if (isSelected) Color.White.copy(alpha = 0.9f)
+                    else if (isToday) (if (isLightMode) Color(0xFF92400E) else TextLiquidGold)
                     else if (isLightMode) LightTextMuted
                     else TextLiquidMuted,
             textAlign = TextAlign.Center,
@@ -512,8 +599,6 @@ fun LiquidGlassDetailsBottomSheet(
     val borderBrush = if (isLightMode) LightGlassBorderBrush else GlassBorderBrush
     val titleColor = if (isLightMode) LightTextMaroon else TextLiquidPrimary
     val goldColor = if (isLightMode) LightTextGold else LiquidGold
-    val textPrimary = if (isLightMode) LightTextPrimary else TextLiquidPrimary
-    val textMuted = if (isLightMode) LightTextMuted else TextLiquidMuted
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
