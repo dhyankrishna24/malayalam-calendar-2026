@@ -1,0 +1,31 @@
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Android Gradle output
+app/build/
+build/
+*.apk
+*.idsig
+
+# Old decompiled APK artifacts (keep repo clean and light)
+/AndroidManifest.xml
+/assets/
+/res/
+smali/
+smali_classes2/
+smali_classes3/
+dist/
+original/
+unknown/
+apktool.yml
+inspect_*.py
+test_*.py
+build_apk.ps1

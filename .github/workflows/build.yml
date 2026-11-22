@@ -1,0 +1,71 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Debug & Release APK
+        run: ./gradlew assembleRelease assembleDebug --stacktrace
+
+      - name: Prepare APK Artifacts
+        run: |
+          mkdir -p artifacts
+          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
+            cp app/build/outputs/apk/release/app-release.apk artifacts/Malayalam_Calendar_2026_Release.apk
+          fi
+          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
+            cp app/build/outputs/apk/debug/app-debug.apk artifacts/Malayalam_Calendar_2026_Debug.apk
+          fi
+
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Malayalam-Calendar-2026-APK
+          path: artifacts/*.apk
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: Malayalam Calendar 2026 v1.0.0
+          body: |
+            ## 📅 Malayalam Calendar 2026 (മലയാളം കലണ്ടർ)
+            
+            ### ✨ Features
+            - **Clean & Ad-Free**: Pure calendar and Panchangam with zero ads, tracking, or bloatware.
+            - **Interactive Day Details**: Click on any date to pull up Nakshatram, Tithi, Sunrise, Sunset, Rahu Kalam, Yamaganda, Gulikai Kalam, and Festivals.
+            - **Kollam Era Dates**: Includes Malayalam month dates and transitions (Dhanu, Makaram, Kumbham...).
+            - **Modern & Lightweight**: Built with Jetpack Compose and Material 3.
+            
+            ### 📥 Download
+            Download `Malayalam_Calendar_2026_Release.apk` or `Malayalam_Calendar_2026_Debug.apk` below and install directly on your Android phone (Android 6.0+ supported, including POCO F1).
+          files: artifacts/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
