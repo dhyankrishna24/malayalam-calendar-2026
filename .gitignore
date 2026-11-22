@@ -29,4 +29,5 @@ apktool.yml
 inspect_*.py
 test_*.py
 temp_apk/
+temp_apk_v5/
 build_apk.ps1
