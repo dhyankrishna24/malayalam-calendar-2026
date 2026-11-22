@@ -18,7 +18,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -40,6 +39,7 @@ fun CalendarScreen() {
     val context = LocalContext.current
     val todayCal = remember { Calendar.getInstance() }
 
+    var isLightMode by remember { mutableStateOf(true) }
     var selectedYear by remember { mutableIntStateOf(2026) }
     var selectedMonth by remember { mutableIntStateOf(1) } // 1-12
     var selectedDay by remember { mutableStateOf<DayPanchang?>(null) }
@@ -71,36 +71,48 @@ fun CalendarScreen() {
     val totalCells = (startDayOfWeek - 1) + days.size
     val trailingEmptyCells = if (totalCells % 7 == 0) 0 else 7 - (totalCells % 7)
 
+    // Dynamic Liquid Glass Brushes & Colors
+    val bgGradient = if (isLightMode) {
+        listOf(LightLiquidBgTop, LightLiquidBgMid, LightLiquidBgBottom)
+    } else {
+        listOf(LiquidBgTop, LiquidBgMid, LiquidBgBottom)
+    }
+    val glassCardBrush = if (isLightMode) LightGlassCardBrush else GlassCardBrush
+    val glassBorderBrush = if (isLightMode) LightGlassBorderBrush else GlassBorderBrush
+    val glassFill = if (isLightMode) LightGlassFill else GlassFill
+    val glassFillSubtle = if (isLightMode) LightGlassFillSubtle else GlassFillSubtle
+    val textPrimary = if (isLightMode) LightTextPrimary else TextLiquidPrimary
+    val textSecondary = if (isLightMode) LightTextSecondary else TextLiquidSecondary
+    val textMuted = if (isLightMode) LightTextMuted else TextLiquidMuted
+    val textGold = if (isLightMode) LightTextGold else TextLiquidGold
+    val titleMaroon = if (isLightMode) LightTextMaroon else TextLiquidPrimary
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(LiquidBgTop, LiquidBgMid, LiquidBgBottom)
-                )
-            )
+            .background(Brush.verticalGradient(bgGradient))
     ) {
-        // Ambient Liquid Light Glow Orbs (Underneath the glass)
+        // Ambient Liquid Light Glow Orbs
         Box(
             modifier = Modifier
                 .size(260.dp)
                 .offset(x = 180.dp, y = (-40).dp)
                 .clip(CircleShape)
-                .background(Brush.radialGradient(listOf(LiquidOrbGold, Color.Transparent)))
+                .background(Brush.radialGradient(listOf(if (isLightMode) LightLiquidOrbGold else LiquidOrbGold, Color.Transparent)))
         )
         Box(
             modifier = Modifier
                 .size(320.dp)
                 .offset(x = (-80).dp, y = 240.dp)
                 .clip(CircleShape)
-                .background(Brush.radialGradient(listOf(LiquidOrbRose, Color.Transparent)))
+                .background(Brush.radialGradient(listOf(if (isLightMode) LightLiquidOrbRose else LiquidOrbRose, Color.Transparent)))
         )
         Box(
             modifier = Modifier
                 .size(240.dp)
                 .offset(x = 160.dp, y = 560.dp)
                 .clip(CircleShape)
-                .background(Brush.radialGradient(listOf(LiquidOrbCyan, Color.Transparent)))
+                .background(Brush.radialGradient(listOf(if (isLightMode) LightLiquidOrbCyan else LiquidOrbCyan, Color.Transparent)))
         )
 
         Scaffold(
@@ -117,9 +129,9 @@ fun CalendarScreen() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(24.dp))
-                            .background(GlassCardBrush)
-                            .border(1.dp, GlassBorderBrush, RoundedCornerShape(24.dp))
-                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                            .background(glassCardBrush)
+                            .border(1.dp, glassBorderBrush, RoundedCornerShape(24.dp))
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -129,37 +141,50 @@ fun CalendarScreen() {
                             Column {
                                 Text(
                                     text = if (isMalayalam) "മലയാളം കലണ്ടർ" else "Malayalam Calendar",
-                                    fontSize = 18.sp,
+                                    fontSize = 17.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = TextLiquidPrimary
+                                    color = titleMaroon
                                 )
                                 Text(
                                     text = "2026 - 2027 • പഞ്ചാംഗം",
                                     fontSize = 11.sp,
-                                    color = TextLiquidGold
+                                    color = textGold
                                 )
                             }
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                // Theme Toggle Pill (☀️ Light / 🌙 Dark)
+                                GlassPill(
+                                    text = if (isLightMode) "☀️" else "🌙",
+                                    isActive = true,
+                                    isLightMode = isLightMode,
+                                    onClick = { isLightMode = !isLightMode }
+                                )
+
+                                Spacer(modifier = Modifier.width(5.dp))
+
                                 // Language Switch Pill
                                 GlassPill(
                                     text = if (isMalayalam) "EN" else "മല",
-                                    isActive = true,
+                                    isActive = false,
+                                    isLightMode = isLightMode,
                                     onClick = { isMalayalam = !isMalayalam }
                                 )
 
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(5.dp))
 
                                 // Year Switch Pills
                                 GlassPill(
                                     text = "2026",
                                     isActive = selectedYear == 2026,
+                                    isLightMode = isLightMode,
                                     onClick = { selectedYear = 2026 }
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
                                 GlassPill(
                                     text = "2027",
                                     isActive = selectedYear == 2027,
+                                    isLightMode = isLightMode,
                                     onClick = { selectedYear = 2027 }
                                 )
                             }
@@ -179,8 +204,8 @@ fun CalendarScreen() {
                         .fillMaxWidth()
                         .padding(horizontal = 14.dp, vertical = 4.dp)
                         .clip(RoundedCornerShape(22.dp))
-                        .background(GlassCardBrush)
-                        .border(1.dp, GlassBorderBrush, RoundedCornerShape(22.dp))
+                        .background(glassCardBrush)
+                        .border(1.dp, glassBorderBrush, RoundedCornerShape(22.dp))
                         .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
                     Row(
@@ -191,6 +216,7 @@ fun CalendarScreen() {
                         // Previous Month Button
                         GlassCircleButton(
                             symbol = "❮",
+                            isLightMode = isLightMode,
                             onClick = {
                                 if (selectedMonth > 1) {
                                     selectedMonth--
@@ -210,14 +236,14 @@ fun CalendarScreen() {
                                 text = "$currentMonthName $selectedYear",
                                 fontSize = 19.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = TextLiquidPrimary
+                                color = titleMaroon
                             )
                             if (malayalamMonthName.isNotEmpty()) {
                                 Text(
                                     text = malayalamMonthName,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = LiquidGold
+                                    color = textGold
                                 )
                             }
                         }
@@ -225,6 +251,7 @@ fun CalendarScreen() {
                         // Next Month Button
                         GlassCircleButton(
                             symbol = "❯",
+                            isLightMode = isLightMode,
                             onClick = {
                                 if (selectedMonth < 12) {
                                     selectedMonth++
@@ -245,8 +272,8 @@ fun CalendarScreen() {
                         .fillMaxWidth()
                         .padding(horizontal = 14.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(GlassFillSubtle)
-                        .border(1.dp, GlassBorderSubtle, RoundedCornerShape(16.dp))
+                        .background(SolidColor(glassFillSubtle))
+                        .border(1.dp, if (isLightMode) LightGlassBorderSubtle else GlassBorderSubtle, RoundedCornerShape(16.dp))
                         .padding(vertical = 8.dp)
                 ) {
                     Row(
@@ -261,7 +288,7 @@ fun CalendarScreen() {
                                 textAlign = TextAlign.Center,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (index == 0) LiquidRose else TextLiquidSecondary
+                                color = if (index == 0) SundayRed else textSecondary
                             )
                         }
                     }
@@ -294,6 +321,7 @@ fun CalendarScreen() {
                             isSunday = isSunday,
                             isToday = isToday,
                             isSelected = selectedDay?.gregorianDay == day.gregorianDay,
+                            isLightMode = isLightMode,
                             onClick = { selectedDay = day }
                         )
                     }
@@ -311,6 +339,7 @@ fun CalendarScreen() {
             LiquidGlassDetailsBottomSheet(
                 day = day,
                 isMalayalam = isMalayalam,
+                isLightMode = isLightMode,
                 onDismiss = { selectedDay = null }
             )
         }
@@ -323,30 +352,34 @@ fun LiquidGlassDayCell(
     isSunday: Boolean,
     isToday: Boolean,
     isSelected: Boolean,
+    isLightMode: Boolean,
     onClick: () -> Unit
 ) {
     val cellShape = RoundedCornerShape(14.dp)
+    val dayCellBrush = if (isSelected) LiquidSelectedBrush
+    else if (isLightMode) LightGlassGradientBrush
+    else GlassGradientBrush
+
+    val dayCellBorderBrush = if (isSelected) Brush.linearGradient(listOf(Color.White, LiquidGold))
+    else if (isToday) Brush.linearGradient(listOf(LiquidGold, Color(0xFFFBBF24)))
+    else if (isLightMode) LightGlassBorderBrush
+    else GlassBorderBrush
 
     Box(
         modifier = Modifier
             .aspectRatio(0.82f)
             .padding(3.dp)
             .clip(cellShape)
-            .background(
-                if (isSelected) LiquidSelectedBrush
-                else GlassGradientBrush
-            )
+            .background(dayCellBrush)
             .border(
                 width = if (isToday || isSelected) 1.5.dp else 1.dp,
-                brush = if (isSelected) Brush.linearGradient(listOf(Color.White, LiquidGold))
-                        else if (isToday) Brush.linearGradient(listOf(LiquidGold, Color.White.copy(0.4f)))
-                        else GlassBorderBrush,
+                brush = dayCellBorderBrush,
                 shape = cellShape
             )
             .clickable { onClick() }
             .padding(4.dp)
     ) {
-        // Top Row: Malayalam Date (Left) and Festival/Holiday Dot (Right)
+        // Top Row: Malayalam Date (Left) and Festival Dot (Right)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -357,7 +390,9 @@ fun LiquidGlassDayCell(
                     text = day.localDate,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isSelected) Color.White else TextLiquidGold
+                    color = if (isSelected) Color.White
+                            else if (isLightMode) LightTextMaroon
+                            else TextLiquidGold
                 )
             } else {
                 Spacer(modifier = Modifier.width(4.dp))
@@ -368,7 +403,7 @@ fun LiquidGlassDayCell(
                     modifier = Modifier
                         .size(6.dp)
                         .clip(CircleShape)
-                        .background(if (isSelected) Color.White else LiquidRose)
+                        .background(if (isSelected) Color.White else SundayRed)
                 )
             }
         }
@@ -379,7 +414,8 @@ fun LiquidGlassDayCell(
             fontSize = 19.sp,
             fontWeight = FontWeight.ExtraBold,
             color = if (isSelected) Color.White
-                    else if (isSunday) LiquidRose
+                    else if (isSunday) SundayRed
+                    else if (isLightMode) LightTextPrimary
                     else TextLiquidPrimary,
             modifier = Modifier.align(Alignment.Center)
         )
@@ -391,7 +427,9 @@ fun LiquidGlassDayCell(
             fontSize = 8.5.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            color = if (isSelected) Color.White.copy(alpha = 0.9f) else TextLiquidMuted,
+            color = if (isSelected) Color.White.copy(alpha = 0.9f)
+                    else if (isLightMode) LightTextMuted
+                    else TextLiquidMuted,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
@@ -404,23 +442,35 @@ fun LiquidGlassDayCell(
 fun GlassPill(
     text: String,
     isActive: Boolean,
+    isLightMode: Boolean,
     onClick: () -> Unit
 ) {
     val pillShape = RoundedCornerShape(16.dp)
+    val bgBrush = if (isActive) LiquidSelectedBrush
+    else SolidColor(if (isLightMode) LightGlassFillSubtle else GlassFillSubtle)
+
+    val borderStroke = if (isActive) {
+        if (isLightMode) LightGlassBorderHighlight else GlassBorderHighlight
+    } else {
+        if (isLightMode) LightGlassBorderSubtle else GlassBorderSubtle
+    }
+
     Box(
         modifier = Modifier
             .clip(pillShape)
-            .background(if (isActive) LiquidSelectedBrush else SolidColor(GlassFillSubtle))
-            .border(1.dp, if (isActive) GlassBorderHighlight else GlassBorderSubtle, pillShape)
+            .background(bgBrush)
+            .border(1.dp, borderStroke, pillShape)
             .clickable { onClick() }
-            .padding(horizontal = 10.dp, vertical = 5.dp),
+            .padding(horizontal = 9.dp, vertical = 5.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
             fontSize = 11.5.sp,
             fontWeight = FontWeight.Bold,
-            color = if (isActive) Color.White else TextLiquidSecondary
+            color = if (isActive) Color.White
+                    else if (isLightMode) LightTextSecondary
+                    else TextLiquidSecondary
         )
     }
 }
@@ -428,14 +478,15 @@ fun GlassPill(
 @Composable
 fun GlassCircleButton(
     symbol: String,
+    isLightMode: Boolean,
     onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .size(38.dp)
             .clip(CircleShape)
-            .background(GlassFill)
-            .border(1.dp, GlassBorderBrush, CircleShape)
+            .background(if (isLightMode) LightGlassFill else GlassFill)
+            .border(1.dp, if (isLightMode) LightGlassBorderBrush else GlassBorderBrush, CircleShape)
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
@@ -443,7 +494,7 @@ fun GlassCircleButton(
             text = symbol,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
-            color = TextLiquidPrimary
+            color = if (isLightMode) LightTextMaroon else TextLiquidPrimary
         )
     }
 }
@@ -453,11 +504,20 @@ fun GlassCircleButton(
 fun LiquidGlassDetailsBottomSheet(
     day: DayPanchang,
     isMalayalam: Boolean,
+    isLightMode: Boolean,
     onDismiss: () -> Unit
 ) {
+    val sheetBg = if (isLightMode) Color(0xFDF8FAFC) else Color(0xF5180B14)
+    val cardBrush = if (isLightMode) LightGlassCardBrush else GlassCardBrush
+    val borderBrush = if (isLightMode) LightGlassBorderBrush else GlassBorderBrush
+    val titleColor = if (isLightMode) LightTextMaroon else TextLiquidPrimary
+    val goldColor = if (isLightMode) LightTextGold else LiquidGold
+    val textPrimary = if (isLightMode) LightTextPrimary else TextLiquidPrimary
+    val textMuted = if (isLightMode) LightTextMuted else TextLiquidMuted
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xF5180B14),
+        containerColor = sheetBg,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = {
             Box(
@@ -466,7 +526,7 @@ fun LiquidGlassDetailsBottomSheet(
                     .width(42.dp)
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(Color.White.copy(alpha = 0.3f))
+                    .background(if (isLightMode) Color(0x40000000) else Color(0x4DFFFFFF))
             )
         }
     ) {
@@ -481,8 +541,8 @@ fun LiquidGlassDetailsBottomSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(20.dp))
-                    .background(GlassGradientBrush)
-                    .border(1.dp, GlassBorderBrush, RoundedCornerShape(20.dp))
+                    .background(cardBrush)
+                    .border(1.dp, borderBrush, RoundedCornerShape(20.dp))
                     .padding(16.dp)
             ) {
                 Row(
@@ -495,20 +555,21 @@ fun LiquidGlassDetailsBottomSheet(
                             text = day.fullDateString.ifEmpty { "${day.gregorianDay}/${day.gregorianMonth}/${day.gregorianYear}" },
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextLiquidPrimary
+                            color = titleColor
                         )
                         if (day.localDate.isNotEmpty() && day.malayalamMonth.isNotEmpty()) {
                             Text(
                                 text = "കൊല്ലവർഷം: ${day.localDate} ${day.malayalamMonth} 1201",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = LiquidGold
+                                color = goldColor
                             )
                         }
                     }
 
                     GlassCircleButton(
                         symbol = "✕",
+                        isLightMode = isLightMode,
                         onClick = onDismiss
                     )
                 }
@@ -518,27 +579,30 @@ fun LiquidGlassDetailsBottomSheet(
 
             // Festivals / Holidays Glowing Glass Banner
             if (day.festivals.isNotEmpty()) {
+                val festBg = if (isLightMode) {
+                    Brush.linearGradient(listOf(Color(0xFFFFF1F2), Color(0xFFFEF3C7)))
+                } else {
+                    Brush.linearGradient(listOf(Color(0x35E11D48), Color(0x20F59E0B)))
+                }
+                val festBorder = if (isLightMode) {
+                    Color(0xFFFDA4AF)
+                } else {
+                    LiquidRose.copy(0.6f)
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(18.dp))
-                        .background(
-                            Brush.linearGradient(
-                                listOf(Color(0x35E11D48), Color(0x20F59E0B))
-                            )
-                        )
-                        .border(
-                            1.dp,
-                            Brush.linearGradient(listOf(LiquidRose.copy(0.6f), LiquidGold.copy(0.4f))),
-                            RoundedCornerShape(18.dp)
-                        )
+                        .background(festBg)
+                        .border(1.dp, festBorder, RoundedCornerShape(18.dp))
                         .padding(14.dp)
                 ) {
                     Column {
                         Text(
                             text = if (isMalayalam) "🎉 വിശേഷദിവസങ്ങൾ / വ്രതങ്ങൾ" else "🎉 Festivals & Observances",
                             fontWeight = FontWeight.Bold,
-                            color = LiquidGold,
+                            color = if (isLightMode) LightTextMaroon else LiquidGold,
                             fontSize = 14.sp
                         )
                         Spacer(modifier = Modifier.height(6.dp))
@@ -546,7 +610,7 @@ fun LiquidGlassDetailsBottomSheet(
                             Text(
                                 text = "✨ $fest",
                                 fontSize = 13.5.sp,
-                                color = TextLiquidPrimary,
+                                color = if (isLightMode) LightTextPrimary else TextLiquidPrimary,
                                 modifier = Modifier.padding(vertical = 2.dp)
                             )
                         }
@@ -561,7 +625,8 @@ fun LiquidGlassDetailsBottomSheet(
                 items = listOf(
                     (if (isMalayalam) "നക്ഷത്രം" else "Nakshathram") to day.nakshathram.joinToString(", ").ifEmpty { "-" },
                     (if (isMalayalam) "തിഥി" else "Tithi") to day.tithi.joinToString(", ").ifEmpty { "-" }
-                )
+                ),
+                isLightMode = isLightMode
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -574,7 +639,8 @@ fun LiquidGlassDetailsBottomSheet(
                     (if (isMalayalam) "സൂര്യാസ്തമയം" else "Sunset") to day.sunset.ifEmpty { "-" },
                     (if (isMalayalam) "ചന്ദ്രോദയം" else "Moonrise") to day.moonrise.ifEmpty { "-" },
                     (if (isMalayalam) "ചന്ദ്രാസ്തമയം" else "Moonset") to day.moonset.ifEmpty { "-" }
-                )
+                ),
+                isLightMode = isLightMode
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -589,7 +655,8 @@ fun LiquidGlassDetailsBottomSheet(
                     (if (isMalayalam) "🟢 അഭിജിത്" else "🟢 Abhijit") to day.abhijit.ifEmpty { "-" },
                     (if (isMalayalam) "🟢 ബ്രഹ്മ മുഹൂർത്തം" else "🟢 Brahma Muhurta") to day.brahmaMuhurta.ifEmpty { "-" },
                     (if (isMalayalam) "🟣 അമൃതകാലം" else "🟣 Amrit Kalam") to day.amritKalam.ifEmpty { "-" }
-                )
+                ),
+                isLightMode = isLightMode
             )
 
             Spacer(modifier = Modifier.height(28.dp))
@@ -600,15 +667,22 @@ fun LiquidGlassDetailsBottomSheet(
 @Composable
 fun LiquidGlassInfoCard(
     title: String,
-    items: List<Pair<String, String>>
+    items: List<Pair<String, String>>,
+    isLightMode: Boolean
 ) {
     val cardShape = RoundedCornerShape(18.dp)
+    val cardBrush = if (isLightMode) LightGlassCardBrush else GlassCardBrush
+    val borderBrush = if (isLightMode) LightGlassBorderBrush else GlassBorderBrush
+    val titleColor = if (isLightMode) LightTextMaroon else LiquidGold
+    val textPrimary = if (isLightMode) LightTextPrimary else TextLiquidPrimary
+    val textMuted = if (isLightMode) LightTextMuted else TextLiquidMuted
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(cardShape)
-            .background(GlassCardBrush)
-            .border(1.dp, GlassBorderBrush, cardShape)
+            .background(cardBrush)
+            .border(1.dp, borderBrush, cardShape)
             .padding(14.dp)
     ) {
         Column {
@@ -616,11 +690,11 @@ fun LiquidGlassInfoCard(
                 text = title,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.5.sp,
-                color = LiquidGold
+                color = titleColor
             )
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider(
-                color = Color.White.copy(alpha = 0.1f)
+                color = if (isLightMode) Color(0x1A000000) else Color(0x1AFFFFFF)
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -635,14 +709,14 @@ fun LiquidGlassInfoCard(
                     Text(
                         text = label,
                         fontSize = 13.sp,
-                        color = TextLiquidMuted,
+                        color = textMuted,
                         modifier = Modifier.weight(0.42f)
                     )
                     Text(
                         text = value,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextLiquidPrimary,
+                        color = textPrimary,
                         textAlign = TextAlign.End,
                         modifier = Modifier.weight(0.58f)
                     )
