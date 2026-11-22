@@ -12,8 +12,8 @@ android {
         applicationId = "com.dhyan.malayalam.calendar"
         minSdk = 23
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.0.7"
+        versionCode = 6
+        versionName = "1.0.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

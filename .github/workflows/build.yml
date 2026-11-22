@@ -55,17 +55,30 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: Malayalam Calendar 2026 v1.0.${{ github.run_number }} (Liquid Glass)
+          name: Malayalam Calendar 2026 v1.0.${{ github.run_number }} (Classic Kerala Edition)
           make_latest: true
           body: |
-            ## 📅 Malayalam Calendar 2026 - Liquid Glass Edition (മലയാളം കലണ്ടർ)
+            ## 📅 Malayalam Calendar 2026 (മലയാളം കലണ്ടർ 2026)
             
-            ### ✨ Features
-            - **💎 Liquid Glass UI**: Modern translucent frosted glass design with ambient lighting and glow effects.
-            - **Clean & Ad-Free**: Pure calendar and Panchangam with zero ads, tracking, or bloatware.
-            - **Interactive Day Details**: Click on any date to pull up Nakshatram, Tithi, Sunrise, Sunset, Rahu Kalam, Yamaganda, Gulikai Kalam, and Festivals.
-            - **Kollam Era Dates**: Includes Malayalam month dates and transitions (Dhanu, Makaram, Kumbham...).
-            - **Modern & Lightweight**: Built with Jetpack Compose and Material 3.
+            ### ✨ Authentic Kerala Calendar Features (Template Match)
+            - **Classic Temple Maroon Header**: Traditional deep maroon top bar and month navigator with Kollam Era subtitle (`1202 തുലാം - വൃശ്ചികം` / `1201 മിഥുനം - കർക്കടകം`).
+            - **2-Line Weekday Header**: English (SUN, MON...) and Malayalam (ഞായർ, തിങ്കൾ...) with Sunday in Red.
+            - **Kerala Table Grid**:
+              - Malayalam date number / Sankranti month start (top-left)
+              - Moon Phase (⚫ Amavasya / ⚪ Pournami) & Bank Holiday (`BH` in red) (top-right)
+              - Bold Gregorian date number (Red for Sundays & Bank Holidays, Black for weekdays)
+              - Nakshathram name in Malayalam (bottom)
+              - Today Highlight: Distinct warm amber outline and background for instant spotting.
+            - **Detailed Day View**:
+              - Maroon top bar with back arrow (`←`)
+              - Centered Month & Year (`ഓഗസ്റ്റ്, 2026`)
+              - Centered Square Date Box with huge date number and Malayalam weekday (`ഞായർ`)
+              - Malayalam Date line (`കർക്കടകം 31, 1201`)
+              - `നക്ഷത്രം` & `തിഥി` in red labels
+              - Warm Golden Festival Card listing all observances and temple events
+              - Traditional Kerala Rahu & Gulikai timings, Shaka Samvat, and Hijri calendar dates
+              - Muslim Prayer Times for Kozhikode (`ളൂഹ്ർ`, `അസർ`, `മഗ്‌രിബ്`, `ഇശാ`, `സുബ്ഹി`, `ഉദയം`)
+              - Illustrated Sun graphic with Sunrise & Sunset timings
             
             ### 📥 Download
             Download `Malayalam_Calendar_2026_Release.apk` below and install directly on your Android phone (Android 6.0+ supported, including POCO F1).

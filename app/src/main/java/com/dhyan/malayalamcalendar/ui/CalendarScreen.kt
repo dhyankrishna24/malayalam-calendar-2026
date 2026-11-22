@@ -1,8 +1,7 @@
 package com.dhyan.malayalamcalendar.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,9 +19,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -33,7 +35,6 @@ import com.dhyan.malayalamcalendar.model.DayPanchang
 import com.dhyan.malayalamcalendar.ui.theme.*
 import java.util.Calendar
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen() {
     val context = LocalContext.current
@@ -47,27 +48,22 @@ fun CalendarScreen() {
         if (y in 2026..2027) todayCal.get(Calendar.MONTH) + 1 else 1
     }
 
-    var isLightMode by remember { mutableStateOf(true) }
     var selectedYear by remember { mutableIntStateOf(initialYear) }
     var selectedMonth by remember { mutableIntStateOf(initialMonth) } // 1-12
     var selectedDay by remember { mutableStateOf<DayPanchang?>(null) }
-    var isMalayalam by remember { mutableStateOf(true) }
 
     val monthNamesMl = remember {
         listOf("ജനുവരി", "ഫെബ്രുവരി", "മാർച്ച്", "ഏപ്രിൽ", "മേയ്", "ജൂൺ", "ജൂലൈ", "ഓഗസ്റ്റ്", "സെപ്റ്റംബർ", "ഒക്ടോബർ", "നവംബർ", "ഡിസംബർ")
     }
-    val monthNamesEn = remember {
-        listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
-    }
-    val weekDaysMl = remember {
+    val weekDaysFullMl = remember {
         listOf("ഞായർ", "തിങ്കൾ", "ചൊവ്വ", "ബുധൻ", "വ്യാഴം", "വെള്ളി", "ശനി")
     }
-    val weekDaysEn = remember {
+    val weekDaysShortEn = remember {
         listOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
     }
 
-    val days = remember(selectedYear, selectedMonth, isMalayalam) {
-        CalendarRepository.loadMonthDays(context, selectedYear, selectedMonth, isMalayalam)
+    val days = remember(selectedYear, selectedMonth) {
+        CalendarRepository.loadMonthDays(context, selectedYear, selectedMonth, isMalayalam = true)
     }
 
     val startDayOfWeek = remember(selectedYear, selectedMonth) {
@@ -75,448 +71,330 @@ fun CalendarScreen() {
         cal.set(selectedYear, selectedMonth - 1, 1)
         cal.get(Calendar.DAY_OF_WEEK) // 1 = Sunday, 7 = Saturday
     }
+    val leadingEmptyCount = startDayOfWeek - 1
 
-    val totalCells = (startDayOfWeek - 1) + days.size
-    val trailingEmptyCells = if (totalCells % 7 == 0) 0 else 7 - (totalCells % 7)
-
-    // Dynamic Liquid Glass Brushes & Colors
-    val bgGradient = if (isLightMode) {
-        listOf(LightLiquidBgTop, LightLiquidBgMid, LightLiquidBgBottom)
-    } else {
-        listOf(LiquidBgTop, LiquidBgMid, LiquidBgBottom)
+    val daysInPrevMonth = remember(selectedYear, selectedMonth) {
+        val cal = Calendar.getInstance()
+        cal.set(selectedYear, selectedMonth - 1, 1)
+        cal.add(Calendar.DATE, -1)
+        cal.get(Calendar.DAY_OF_MONTH)
     }
-    val glassCardBrush = if (isLightMode) LightGlassCardBrush else GlassCardBrush
-    val glassBorderBrush = if (isLightMode) LightGlassBorderBrush else GlassBorderBrush
-    val glassFillSubtle = if (isLightMode) LightGlassFillSubtle else GlassFillSubtle
-    val textSecondary = if (isLightMode) LightTextSecondary else TextLiquidSecondary
-    val textGold = if (isLightMode) LightTextGold else TextLiquidGold
-    val titleMaroon = if (isLightMode) LightTextMaroon else TextLiquidPrimary
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(bgGradient))
+    val totalGridCells = leadingEmptyCount + days.size
+    val trailingEmptyCount = if (totalGridCells % 7 == 0) 0 else 7 - (totalGridCells % 7)
+
+    // Handle physical / gesture back button to close Day Details
+    BackHandler(enabled = selectedDay != null) {
+        selectedDay = null
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = CalendarPaperBg
     ) {
-        // Ambient Liquid Light Glow Orbs
-        Box(
-            modifier = Modifier
-                .size(260.dp)
-                .offset(x = 180.dp, y = (-40).dp)
-                .clip(CircleShape)
-                .background(Brush.radialGradient(listOf(if (isLightMode) LightLiquidOrbGold else LiquidOrbGold, Color.Transparent)))
-        )
-        Box(
-            modifier = Modifier
-                .size(320.dp)
-                .offset(x = (-80).dp, y = 240.dp)
-                .clip(CircleShape)
-                .background(Brush.radialGradient(listOf(if (isLightMode) LightLiquidOrbRose else LiquidOrbRose, Color.Transparent)))
-        )
-        Box(
-            modifier = Modifier
-                .size(240.dp)
-                .offset(x = 160.dp, y = 560.dp)
-                .clip(CircleShape)
-                .background(Brush.radialGradient(listOf(if (isLightMode) LightLiquidOrbCyan else LiquidOrbCyan, Color.Transparent)))
-        )
-
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                // Floating Liquid Glass Top App Bar
+        if (selectedDay != null) {
+            // Full Date Details Screen matching template
+            DateDetailsView(
+                day = selectedDay!!,
+                monthNameMl = monthNamesMl[selectedDay!!.gregorianMonth - 1],
+                weekDayNameMl = weekDaysFullMl[selectedDay!!.dayOfWeek - 1],
+                onBack = { selectedDay = null }
+            )
+        } else {
+            // Monthly Calendar Grid matching template
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Top App Bar
                 Surface(
-                    color = Color.Transparent,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                    color = TempleMaroon,
+                    shadowElevation = 3.dp
                 ) {
-                    Box(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(glassCardBrush)
-                            .border(1.dp, glassBorderBrush, RoundedCornerShape(24.dp))
-                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                            .statusBarsPadding()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = if (isMalayalam) "മലയാളം കലണ്ടർ" else "Malayalam Calendar",
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = titleMaroon
-                                )
-                                Text(
-                                    text = "2026 - 2027 • പഞ്ചാംഗം",
-                                    fontSize = 11.sp,
-                                    color = textGold
-                                )
-                            }
+                        Text(
+                            text = "മലയാളം കലണ്ടർ",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
 
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                // Jump to Today Button
-                                val isAtToday = selectedYear == initialYear && selectedMonth == initialMonth
-                                GlassPill(
-                                    text = if (isMalayalam) "ഇന്ന്" else "Today",
-                                    isActive = isAtToday,
-                                    isLightMode = isLightMode,
-                                    onClick = {
-                                        selectedYear = initialYear
-                                        selectedMonth = initialMonth
-                                    }
-                                )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Jump to Today Button
+                            val isAtToday = selectedYear == initialYear && selectedMonth == initialMonth
+                            TopBarPill(
+                                text = "ഇന്ന്",
+                                isActive = isAtToday,
+                                onClick = {
+                                    selectedYear = initialYear
+                                    selectedMonth = initialMonth
+                                }
+                            )
 
-                                Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
 
-                                // Theme Toggle Pill (☀️ Light / 🌙 Dark)
-                                GlassPill(
-                                    text = if (isLightMode) "☀️" else "🌙",
-                                    isActive = true,
-                                    isLightMode = isLightMode,
-                                    onClick = { isLightMode = !isLightMode }
-                                )
-
-                                Spacer(modifier = Modifier.width(4.dp))
-
-                                // Language Switch Pill
-                                GlassPill(
-                                    text = if (isMalayalam) "EN" else "മല",
-                                    isActive = false,
-                                    isLightMode = isLightMode,
-                                    onClick = { isMalayalam = !isMalayalam }
-                                )
-
-                                Spacer(modifier = Modifier.width(4.dp))
-
-                                // Year Switch Pills
-                                GlassPill(
-                                    text = "2026",
-                                    isActive = selectedYear == 2026,
-                                    isLightMode = isLightMode,
-                                    onClick = { selectedYear = 2026 }
-                                )
-                                Spacer(modifier = Modifier.width(3.dp))
-                                GlassPill(
-                                    text = "2027",
-                                    isActive = selectedYear == 2027,
-                                    isLightMode = isLightMode,
-                                    onClick = { selectedYear = 2027 }
-                                )
-                            }
+                            // Year Selector: 2026 / 2027
+                            TopBarPill(
+                                text = "2026",
+                                isActive = selectedYear == 2026,
+                                onClick = { selectedYear = 2026 }
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            TopBarPill(
+                                text = "2027",
+                                isActive = selectedYear == 2027,
+                                onClick = { selectedYear = 2027 }
+                            )
                         }
                     }
                 }
-            }
-        ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                // Floating Liquid Glass Month Navigation Controller
+
+                // Month Navigation Banner
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 4.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(glassCardBrush)
-                        .border(1.dp, glassBorderBrush, RoundedCornerShape(22.dp))
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                        .background(TempleMaroonDark)
+                        .padding(horizontal = 8.dp, vertical = 8.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Previous Month Button
-                        GlassCircleButton(
-                            symbol = "❮",
-                            isLightMode = isLightMode,
-                            onClick = {
-                                if (selectedMonth > 1) {
-                                    selectedMonth--
-                                } else if (selectedYear > 2026) {
-                                    selectedYear--
-                                    selectedMonth = 12
-                                }
-                            }
-                        )
+                        // Previous Month Button (<)
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clickable {
+                                    if (selectedMonth > 1) {
+                                        selectedMonth--
+                                    } else if (selectedYear > 2026) {
+                                        selectedYear--
+                                        selectedMonth = 12
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "❮",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                        }
 
-                        // Center Month & Year Text
+                        // Centered Month & Kollam Subtitle
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            val currentMonthName = if (isMalayalam) monthNamesMl[selectedMonth - 1] else monthNamesEn[selectedMonth - 1]
-                            val malayalamMonthName = CalendarRepository.getMonthMalayalamName(selectedMonth)
+                            val currentMonthName = monthNamesMl[selectedMonth - 1]
+                            val kollamSubtitle = CalendarRepository.getKollamSubtitle(selectedYear, selectedMonth)
 
                             Text(
                                 text = "$currentMonthName $selectedYear",
-                                fontSize = 19.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = titleMaroon
+                                fontSize = 21.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
                             )
-                            if (malayalamMonthName.isNotEmpty()) {
+                            if (kollamSubtitle.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = malayalamMonthName,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = textGold
+                                    text = kollamSubtitle,
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color.White.copy(alpha = 0.95f)
                                 )
                             }
                         }
 
-                        // Next Month Button
-                        GlassCircleButton(
-                            symbol = "❯",
-                            isLightMode = isLightMode,
-                            onClick = {
-                                if (selectedMonth < 12) {
-                                    selectedMonth++
-                                } else if (selectedYear < 2027) {
-                                    selectedYear++
-                                    selectedMonth = 1
-                                }
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // Weekday Header in Liquid Glass Bar
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(SolidColor(glassFillSubtle))
-                        .border(1.dp, if (isLightMode) LightGlassBorderSubtle else GlassBorderSubtle, RoundedCornerShape(16.dp))
-                        .padding(vertical = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceAround
-                    ) {
-                        val weekDays = if (isMalayalam) weekDaysMl else weekDaysEn
-                        weekDays.forEachIndexed { index, dayName ->
+                        // Next Month Button (>)
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clickable {
+                                    if (selectedMonth < 12) {
+                                        selectedMonth++
+                                    } else if (selectedYear < 2027) {
+                                        selectedYear++
+                                        selectedMonth = 1
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
-                                text = dayName,
-                                modifier = Modifier.weight(1f),
-                                textAlign = TextAlign.Center,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (index == 0) SundayRed else textSecondary
+                                text = "❯",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                // 2-Line Weekday Header (SUN / MON / TUE ...)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(WeekdayHeaderBg)
+                        .border(1.dp, CalendarGridBorder)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        weekDaysShortEn.forEachIndexed { index, enName ->
+                            val isSun = index == 0
+                            val mlName = weekDaysFullMl[index]
+                            val colColor = if (isSun) SundayRed else DetailsTextDark
 
-                // Liquid Glass Calendar Grid
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(vertical = 5.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = enName,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colColor
+                                    )
+                                    Text(
+                                        text = mlName,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = colColor
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Monthly Grid Table
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(7),
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 10.dp),
-                    contentPadding = PaddingValues(bottom = 20.dp)
+                        .background(CalendarPaperBg),
+                    contentPadding = PaddingValues(0.dp)
                 ) {
-                    // Empty leading slots
-                    items(startDayOfWeek - 1) {
-                        Box(modifier = Modifier.aspectRatio(0.82f))
+                    // Leading days from previous month (Dimmed)
+                    items(leadingEmptyCount) { index ->
+                        val dayNum = daysInPrevMonth - leadingEmptyCount + 1 + index
+                        DimmedDayCell(dayNumber = dayNum)
                     }
 
-                    // Active Month Days
-                    items(days) { day ->
-                        val isSunday = (startDayOfWeek - 1 + day.gregorianDay - 1) % 7 == 0
+                    // Active Days of Current Month
+                    itemsIndexed(days) { _, day ->
                         val isToday = (todayCal.get(Calendar.YEAR) == selectedYear &&
                                 todayCal.get(Calendar.MONTH) + 1 == selectedMonth &&
                                 todayCal.get(Calendar.DAY_OF_MONTH) == day.gregorianDay)
 
-                        LiquidGlassDayCell(
+                        KeralaDayCell(
                             day = day,
-                            isSunday = isSunday,
                             isToday = isToday,
-                            isSelected = selectedDay?.gregorianDay == day.gregorianDay,
-                            isLightMode = isLightMode,
                             onClick = { selectedDay = day }
                         )
                     }
 
-                    // Empty trailing slots
-                    items(trailingEmptyCells) {
-                        Box(modifier = Modifier.aspectRatio(0.82f))
+                    // Trailing days from next month (Dimmed)
+                    items(trailingEmptyCount) { index ->
+                        val dayNum = index + 1
+                        DimmedDayCell(dayNumber = dayNum)
                     }
                 }
             }
-        }
-
-        // Liquid Glass Date Details Bottom Sheet
-        selectedDay?.let { day ->
-            LiquidGlassDetailsBottomSheet(
-                day = day,
-                isMalayalam = isMalayalam,
-                isLightMode = isLightMode,
-                onDismiss = { selectedDay = null }
-            )
         }
     }
 }
 
 @Composable
-fun LiquidGlassDayCell(
+fun KeralaDayCell(
     day: DayPanchang,
-    isSunday: Boolean,
     isToday: Boolean,
-    isSelected: Boolean,
-    isLightMode: Boolean,
     onClick: () -> Unit
 ) {
-    val cellShape = RoundedCornerShape(14.dp)
-
-    // Vibrant background brush when selected, glowing warm amber glass when isToday, or frosted glass
-    val dayCellBrush = if (isSelected) {
-        LiquidSelectedBrush
-    } else if (isToday) {
-        if (isLightMode) {
-            Brush.verticalGradient(
-                listOf(
-                    Color(0xFFFEF3C7),
-                    Color(0xFFFDE68A).copy(alpha = 0.85f)
-                )
-            )
-        } else {
-            Brush.verticalGradient(
-                listOf(
-                    Color(0x55F59E0B),
-                    Color(0x30FBBF24)
-                )
-            )
-        }
-    } else if (isLightMode) {
-        LightGlassGradientBrush
-    } else {
-        GlassGradientBrush
-    }
-
-    // Prominent glowing border: 2dp gold when today, 2dp white-gold when selected
-    val dayCellBorderBrush = if (isSelected) {
-        Brush.linearGradient(listOf(Color.White, LiquidGold))
-    } else if (isToday) {
-        Brush.linearGradient(
-            listOf(
-                Color(0xFFF59E0B),
-                Color(0xFFFDE68A),
-                Color(0xFFF59E0B)
-            )
-        )
-    } else if (isLightMode) {
-        LightGlassBorderBrush
-    } else {
-        GlassBorderBrush
-    }
+    val isRedDay = day.isSunday || day.isBankHoliday
+    val cellBorder = if (isToday) TodayBorder else CalendarGridBorder
+    val borderWidth = if (isToday) 2.dp else 0.5.dp
+    val cellBg = if (isToday) TodayBg else Color.White
 
     Box(
         modifier = Modifier
-            .aspectRatio(0.82f)
-            .padding(3.dp)
-            .clip(cellShape)
-            .background(dayCellBrush)
-            .border(
-                width = if (isToday || isSelected) 2.dp else 1.dp,
-                brush = dayCellBorderBrush,
-                shape = cellShape
-            )
+            .aspectRatio(0.80f)
+            .background(cellBg)
+            .border(borderWidth, cellBorder)
             .clickable { onClick() }
-            .padding(4.dp)
+            .padding(horizontal = 3.dp, vertical = 2.dp)
     ) {
-        // Glowing halo behind day number when isToday
-        if (isToday && !isSelected) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(if (isLightMode) Color(0x3DF59E0B) else Color(0x40FBBF24))
-                    .align(Alignment.Center)
-            )
-        }
-
-        // Top Row: Malayalam Date (Left) and Festival / TODAY Badge (Right)
+        // Top Row: Malayalam Date (Left) & Moon Phase / BH / TODAY (Right)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
+            // Malayalam Date / Month Start
             if (day.localDate.isNotEmpty()) {
+                val malText = if (day.localDate == "1" && day.gregorianDay > 1 && day.malayalamMonth.isNotEmpty()) {
+                    "${day.malayalamMonth.take(3)}\n1"
+                } else {
+                    day.localDate
+                }
                 Text(
-                    text = day.localDate,
-                    fontSize = 10.sp,
+                    text = malText,
+                    fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isSelected) Color.White
-                            else if (isToday) Color(0xFFB45309)
-                            else if (isLightMode) LightTextMaroon
-                            else TextLiquidGold
+                    color = DetailsTextDark,
+                    lineHeight = 10.sp
                 )
             } else {
                 Spacer(modifier = Modifier.width(4.dp))
             }
 
+            // Right indicators: Moon Phase & BH
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // "TODAY" micro-badge
-                if (isToday && !isSelected) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xFFF59E0B))
-                            .padding(horizontal = 3.dp, vertical = 1.dp)
-                    ) {
-                        Text(
-                            text = "TODAY",
-                            fontSize = 6.5.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
-                        )
-                    }
+                if (day.moonPhase != null) {
+                    Text(
+                        text = day.moonPhase,
+                        fontSize = 9.sp,
+                        color = Color.Black
+                    )
                     Spacer(modifier = Modifier.width(2.dp))
                 }
-
-                if (day.festivals.isNotEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(if (isSelected) Color.White else SundayRed)
+                if (day.isBankHoliday && !day.isSunday) {
+                    Text(
+                        text = "BH",
+                        fontSize = 8.5.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = SundayRed
                     )
                 }
             }
         }
 
-        // Center: Gregorian Day Number
+        // Center: Large Gregorian Date Number
         Text(
             text = "${day.gregorianDay}",
-            fontSize = 19.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = if (isSelected) Color.White
-                    else if (isToday) (if (isLightMode) Color(0xFF92400E) else LiquidGold)
-                    else if (isSunday) SundayRed
-                    else if (isLightMode) LightTextPrimary
-                    else TextLiquidPrimary,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isRedDay) SundayRed else DetailsTextDark,
             modifier = Modifier.align(Alignment.Center)
         )
 
-        // Bottom: Nakshathram Name
-        val nakshatraShort = day.nakshathram.firstOrNull()?.split(" ")?.firstOrNull() ?: ""
+        // Bottom: Nakshathram short text
+        val rawNakshatra = day.nakshathram.firstOrNull()?.split(" ")?.firstOrNull() ?: ""
+        val shortNakshatra = if (rawNakshatra.length > 5) rawNakshatra.take(4) + "..." else rawNakshatra
+
         Text(
-            text = nakshatraShort,
-            fontSize = 8.5.sp,
+            text = shortNakshatra,
+            fontSize = 8.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            color = if (isSelected) Color.White.copy(alpha = 0.9f)
-                    else if (isToday) (if (isLightMode) Color(0xFF92400E) else TextLiquidGold)
-                    else if (isLightMode) LightTextMuted
-                    else TextLiquidMuted,
+            color = DetailsTextDark,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
@@ -526,222 +404,343 @@ fun LiquidGlassDayCell(
 }
 
 @Composable
-fun GlassPill(
+fun DimmedDayCell(dayNumber: Int) {
+    Box(
+        modifier = Modifier
+            .aspectRatio(0.80f)
+            .background(Color(0xFFFAFAFA))
+            .border(0.5.dp, CalendarGridBorder),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "$dayNumber",
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Normal,
+            color = Color(0xFFC0C0C0)
+        )
+    }
+}
+
+@Composable
+fun TopBarPill(
     text: String,
     isActive: Boolean,
-    isLightMode: Boolean,
     onClick: () -> Unit
 ) {
-    val pillShape = RoundedCornerShape(16.dp)
-    val bgBrush = if (isActive) LiquidSelectedBrush
-    else SolidColor(if (isLightMode) LightGlassFillSubtle else GlassFillSubtle)
-
-    val borderStroke = if (isActive) {
-        if (isLightMode) LightGlassBorderHighlight else GlassBorderHighlight
-    } else {
-        if (isLightMode) LightGlassBorderSubtle else GlassBorderSubtle
-    }
+    val pillShape = RoundedCornerShape(14.dp)
+    val bg = if (isActive) Color.White else Color(0x33FFFFFF)
+    val textCol = if (isActive) TempleMaroon else Color.White
 
     Box(
         modifier = Modifier
             .clip(pillShape)
-            .background(bgBrush)
-            .border(1.dp, borderStroke, pillShape)
+            .background(bg)
             .clickable { onClick() }
-            .padding(horizontal = 9.dp, vertical = 5.dp),
+            .padding(horizontal = 9.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
             fontSize = 11.5.sp,
             fontWeight = FontWeight.Bold,
-            color = if (isActive) Color.White
-                    else if (isLightMode) LightTextSecondary
-                    else TextLiquidSecondary
+            color = textCol
         )
     }
 }
 
-@Composable
-fun GlassCircleButton(
-    symbol: String,
-    isLightMode: Boolean,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(38.dp)
-            .clip(CircleShape)
-            .background(if (isLightMode) LightGlassFill else GlassFill)
-            .border(1.dp, if (isLightMode) LightGlassBorderBrush else GlassBorderBrush, CircleShape)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = symbol,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (isLightMode) LightTextMaroon else TextLiquidPrimary
-        )
-    }
-}
+// -------------------------------------------------------------
+// Day Details View matching unnamed (1), (2), (4).webp
+// -------------------------------------------------------------
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LiquidGlassDetailsBottomSheet(
+fun DateDetailsView(
     day: DayPanchang,
-    isMalayalam: Boolean,
-    isLightMode: Boolean,
-    onDismiss: () -> Unit
+    monthNameMl: String,
+    weekDayNameMl: String,
+    onBack: () -> Unit
 ) {
-    val sheetBg = if (isLightMode) Color(0xFDF8FAFC) else Color(0xF5180B14)
-    val cardBrush = if (isLightMode) LightGlassCardBrush else GlassCardBrush
-    val borderBrush = if (isLightMode) LightGlassBorderBrush else GlassBorderBrush
-    val titleColor = if (isLightMode) LightTextMaroon else TextLiquidPrimary
-    val goldColor = if (isLightMode) LightTextGold else LiquidGold
+    val isRedDay = day.isSunday || day.isBankHoliday
+    val prayerTimes = remember(day.gregorianMonth, day.gregorianDay) {
+        CalendarRepository.getKozhikodePrayerTimes(day.gregorianMonth, day.gregorianDay)
+    }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = sheetBg,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(vertical = 12.dp)
-                    .width(42.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(if (isLightMode) Color(0x40000000) else Color(0x4DFFFFFF))
-            )
-        }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 4.dp)
-                .verticalScroll(rememberScrollState())
+        // Maroon Top Bar with Back Arrow and Title
+        Surface(
+            color = TempleMaroon,
+            shadowElevation = 4.dp
         ) {
-            // Header Glass Card
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(cardBrush)
-                    .border(1.dp, borderBrush, RoundedCornerShape(20.dp))
-                    .padding(16.dp)
+                    .statusBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = day.fullDateString.ifEmpty { "${day.gregorianDay}/${day.gregorianMonth}/${day.gregorianYear}" },
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = titleColor
-                        )
-                        if (day.localDate.isNotEmpty() && day.malayalamMonth.isNotEmpty()) {
-                            Text(
-                                text = "കൊല്ലവർഷം: ${day.localDate} ${day.malayalamMonth} 1201",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = goldColor
-                            )
-                        }
-                    }
+                IconButton(onClick = onBack) {
+                    Text(
+                        text = "←",
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "മലയാളം കലണ്ടർ",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
 
-                    GlassCircleButton(
-                        symbol = "✕",
-                        isLightMode = isLightMode,
-                        onClick = onDismiss
+        // Scrollable Day Details Content
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Month, Year Header (e.g. "ഓഗസ്റ്റ്, 2026")
+            Text(
+                text = "$monthNameMl, ${day.gregorianYear}",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = DetailsTextDark
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Centered Square White Date Box
+            Box(
+                modifier = Modifier
+                    .size(136.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.White)
+                    .border(1.5.dp, DateBoxBorder, RoundedCornerShape(4.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "${day.gregorianDay}",
+                        fontSize = 54.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isRedDay) SundayRed else DetailsTextDark,
+                        lineHeight = 56.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = weekDayNameMl,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DetailsTextDark
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Festivals / Holidays Glowing Glass Banner
-            if (day.festivals.isNotEmpty()) {
-                val festBg = if (isLightMode) {
-                    Brush.linearGradient(listOf(Color(0xFFFFF1F2), Color(0xFFFEF3C7)))
-                } else {
-                    Brush.linearGradient(listOf(Color(0x35E11D48), Color(0x20F59E0B)))
-                }
-                val festBorder = if (isLightMode) {
-                    Color(0xFFFDA4AF)
-                } else {
-                    LiquidRose.copy(0.6f)
-                }
+            // Malayalam Date Subtitle (e.g. "കർക്കടകം 31, 1201")
+            val malayalamDateFull = if (day.malayalamMonth.isNotEmpty() && day.localDate.isNotEmpty()) {
+                "${day.malayalamMonth} ${day.localDate}, ${day.kollamYear}"
+            } else ""
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(festBg)
-                        .border(1.dp, festBorder, RoundedCornerShape(18.dp))
-                        .padding(14.dp)
-                ) {
-                    Column {
-                        Text(
-                            text = if (isMalayalam) "🎉 വിശേഷദിവസങ്ങൾ / വ്രതങ്ങൾ" else "🎉 Festivals & Observances",
-                            fontWeight = FontWeight.Bold,
-                            color = if (isLightMode) LightTextMaroon else LiquidGold,
-                            fontSize = 14.sp
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        day.festivals.forEach { fest ->
-                            Text(
-                                text = "✨ $fest",
-                                fontSize = 13.5.sp,
-                                color = if (isLightMode) LightTextPrimary else TextLiquidPrimary,
-                                modifier = Modifier.padding(vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
+            if (malayalamDateFull.isNotEmpty()) {
+                Text(
+                    text = malayalamDateFull,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DetailsTextDark
+                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Section: Panchangam (Nakshathram & Tithi)
-            LiquidGlassInfoCard(
-                title = if (isMalayalam) "⭐ നക്ഷത്രവും തിഥിയും" else "⭐ Nakshathram & Tithi",
-                items = listOf(
-                    (if (isMalayalam) "നക്ഷത്രം" else "Nakshathram") to day.nakshathram.joinToString(", ").ifEmpty { "-" },
-                    (if (isMalayalam) "തിഥി" else "Tithi") to day.tithi.joinToString(", ").ifEmpty { "-" }
-                ),
-                isLightMode = isLightMode
+            // Nakshathram & Tithi
+            val nakshatraStr = day.nakshathram.firstOrNull()?.replace(" upto ", " ") ?: "-"
+            val tithiStr = day.tithi.firstOrNull()?.replace(" upto ", " ") ?: "-"
+
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "നക്ഷത്രം : ",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TimingLabelRed
+                )
+                Text(
+                    text = nakshatraStr,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = DetailsTextDark
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "തിഥി : ",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TimingLabelRed
+                )
+                Text(
+                    text = tithiStr,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = DetailsTextDark
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Warm Golden Festival & Observances Card
+            val festivalsText = if (day.festivals.isNotEmpty()) {
+                day.festivals.joinToString(", ")
+            } else {
+                "പ്രത്യേക വിശേഷങ്ങൾ ഒന്നുമില്ല"
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(FestivalGoldBg)
+                    .border(1.dp, FestivalGoldBorder, RoundedCornerShape(6.dp))
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = festivalsText,
+                    fontSize = 14.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = FestivalText,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 22.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Auspicious & Conversion Timings (Rahu, Gulika, Shaka, Hijri)
+            TimingDetailRow(label = "രാഹു :", value = day.rahuKalam)
+            TimingDetailRow(label = "ഗുളി :", value = day.gulikaiKalam)
+
+            if (day.shakaDate.isNotEmpty()) {
+                TimingDetailRow(label = "ശക :", value = day.shakaDate)
+            }
+            if (day.hijriDate.isNotEmpty()) {
+                TimingDetailRow(label = "ഹിജ്‌റ :", value = day.hijriDate)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = Color(0xFFE2E2E2), thickness = 1.dp)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Muslim Prayer Times Section (Kozhikode)
+            Text(
+                text = "മുസ്‌ലിം നമസ്കാര സമയം (കോഴിക്കോട്)",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = DetailsTextDark,
+                textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Section: Sun & Moon Timings
-            LiquidGlassInfoCard(
-                title = if (isMalayalam) "☀️ സൂര്യ-ചന്ദ്ര സമയങ്ങൾ" else "☀️ Sun & Moon Timings",
-                items = listOf(
-                    (if (isMalayalam) "സൂര്യോദയം" else "Sunrise") to day.sunrise.ifEmpty { "-" },
-                    (if (isMalayalam) "സൂര്യാസ്തമയം" else "Sunset") to day.sunset.ifEmpty { "-" },
-                    (if (isMalayalam) "ചന്ദ്രോദയം" else "Moonrise") to day.moonrise.ifEmpty { "-" },
-                    (if (isMalayalam) "ചന്ദ്രാസ്തമയം" else "Moonset") to day.moonset.ifEmpty { "-" }
-                ),
-                isLightMode = isLightMode
-            )
+            // Line 1: Dhuhr, Asr, Maghrib
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PrayerTimeItem(label = "ളൂഹ്ർ", time = prayerTimes.dhuhr)
+                Text(text = ",  ", color = DetailsTextDark)
+                PrayerTimeItem(label = "അസർ", time = prayerTimes.asr)
+                Text(text = ",  ", color = DetailsTextDark)
+                PrayerTimeItem(label = "മഗ്‌രിബ്", time = prayerTimes.maghrib)
+                Text(text = ",", color = DetailsTextDark)
+            }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-            // Section: Auspicious & Inauspicious Times
-            LiquidGlassInfoCard(
-                title = if (isMalayalam) "⏳ ശുഭാശുഭ സമയങ്ങൾ" else "⏳ Auspicious & Inauspicious Times",
-                items = listOf(
-                    (if (isMalayalam) "🔴 രാഹുകാലം" else "🔴 Rahu Kalam") to day.rahuKalam.ifEmpty { "-" },
-                    (if (isMalayalam) "🟡 ഗുളികകാലം" else "🟡 Gulikai Kalam") to day.gulikaiKalam.ifEmpty { "-" },
-                    (if (isMalayalam) "⚪ യമഗണ്ഡം" else "⚪ Yamaganda") to day.yamaganda.ifEmpty { "-" },
-                    (if (isMalayalam) "🟢 അഭിജിത്" else "🟢 Abhijit") to day.abhijit.ifEmpty { "-" },
-                    (if (isMalayalam) "🟢 ബ്രഹ്മ മുഹൂർത്തം" else "🟢 Brahma Muhurta") to day.brahmaMuhurta.ifEmpty { "-" },
-                    (if (isMalayalam) "🟣 അമൃതകാലം" else "🟣 Amrit Kalam") to day.amritKalam.ifEmpty { "-" }
-                ),
-                isLightMode = isLightMode
+            // Line 2: Isha, Subhi, Udayam
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PrayerTimeItem(label = "ഇശാ", time = prayerTimes.isha)
+                Text(text = ",  ", color = DetailsTextDark)
+                PrayerTimeItem(label = "സുബ്ഹി", time = prayerTimes.subhi)
+                Text(text = ",  ", color = DetailsTextDark)
+                PrayerTimeItem(label = "ഉദയം", time = prayerTimes.udayam)
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+            HorizontalDivider(color = Color(0xFFE2E2E2), thickness = 1.dp)
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Sun Illustration with Sunrise & Sunset
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Illustrated Rising Sun on Left
+                SunIllustration(
+                    modifier = Modifier.size(width = 110.dp, height = 65.dp)
+                )
+
+                Spacer(modifier = Modifier.width(26.dp))
+
+                // Sunrise & Sunset on Right
+                Column {
+                    val cleanSunrise = day.sunrise.replace(" എ എം", "").replace(" AM", "").trim()
+                        .ifEmpty { prayerTimes.udayam }
+                    val cleanSunset = day.sunset.replace(" പി എം", "").replace(" PM", "").trim()
+                        .ifEmpty { prayerTimes.maghrib }
+
+                    Text(
+                        text = "സൂര്യോദയം : $cleanSunrise",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = DetailsTextDark
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "അസ്തമയം : $cleanSunset",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = DetailsTextDark
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // Footnote at Bottom
+            Text(
+                text = "ഉദയം ആറു മണിക്ക് എന്ന അടിസ്ഥാനത്തിലാണ് രാഹുകാല, ഗുളികകാല സമയം നൽകിയിട്ടുള്ളത്. ചന്ദ്രദർശനമനുസരിച്ചു മുസ്ലിം അവധിദിവസങ്ങളിൽ മാറ്റം വന്നേക്കാം.",
+                fontSize = 12.sp,
+                color = DetailsTextMuted,
+                textAlign = TextAlign.Center,
+                lineHeight = 18.sp,
+                modifier = Modifier.padding(horizontal = 8.dp)
             )
 
             Spacer(modifier = Modifier.height(28.dp))
@@ -750,63 +749,104 @@ fun LiquidGlassDetailsBottomSheet(
 }
 
 @Composable
-fun LiquidGlassInfoCard(
-    title: String,
-    items: List<Pair<String, String>>,
-    isLightMode: Boolean
-) {
-    val cardShape = RoundedCornerShape(18.dp)
-    val cardBrush = if (isLightMode) LightGlassCardBrush else GlassCardBrush
-    val borderBrush = if (isLightMode) LightGlassBorderBrush else GlassBorderBrush
-    val titleColor = if (isLightMode) LightTextMaroon else LiquidGold
-    val textPrimary = if (isLightMode) LightTextPrimary else TextLiquidPrimary
-    val textMuted = if (isLightMode) LightTextMuted else TextLiquidMuted
-
-    Box(
+fun TimingDetailRow(label: String, value: String) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(cardShape)
-            .background(cardBrush)
-            .border(1.dp, borderBrush, cardShape)
-            .padding(14.dp)
+            .padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
-            Text(
-                text = title,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.5.sp,
-                color = titleColor
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(
-                color = if (isLightMode) Color(0x1A000000) else Color(0x1AFFFFFF)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "$label ",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = TimingLabelRed
+        )
+        Text(
+            text = value,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium,
+            color = DetailsTextDark
+        )
+    }
+}
 
-            items.forEach { (label, value) ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 3.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = label,
-                        fontSize = 13.sp,
-                        color = textMuted,
-                        modifier = Modifier.weight(0.42f)
-                    )
-                    Text(
-                        text = value,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = textPrimary,
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.weight(0.58f)
-                    )
-                }
-            }
+@Composable
+fun PrayerTimeItem(label: String, time: String) {
+    Text(
+        text = "$label : ",
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Bold,
+        color = TimingLabelRed
+    )
+    Text(
+        text = time,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Medium,
+        color = DetailsTextDark
+    )
+}
+
+// -------------------------------------------------------------
+// Canvas Sun Illustration matching template
+// -------------------------------------------------------------
+
+@Composable
+fun SunIllustration(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val width = size.width
+        val height = size.height
+        val baseY = height * 0.82f
+        val centerX = width * 0.5f
+        val radius = height * 0.42f
+
+        // Draw baseline
+        drawLine(
+            color = Color.Black,
+            start = Offset(4f, baseY),
+            end = Offset(width - 4f, baseY),
+            strokeWidth = 3f,
+            cap = StrokeCap.Round
+        )
+
+        // Draw Sun semicircle fill
+        val arcRect = Rect(centerX - radius, baseY - radius, centerX + radius, baseY + radius)
+        drawArc(
+            color = SunGold,
+            startAngle = 180f,
+            sweepAngle = 180f,
+            useCenter = true,
+            topLeft = arcRect.topLeft,
+            size = arcRect.size
+        )
+
+        // Outline of Sun semicircle
+        drawArc(
+            color = Color.Black,
+            startAngle = 180f,
+            sweepAngle = 180f,
+            useCenter = false,
+            topLeft = arcRect.topLeft,
+            size = arcRect.size,
+            style = Stroke(width = 3.5f, cap = StrokeCap.Round)
+        )
+
+        // Radiating rays around the curved edge
+        val rayAngles = listOf(195f, 215f, 235f, 255f, 275f, 295f, 315f, 335f, 345f)
+        for (angleDeg in rayAngles) {
+            val rad = Math.toRadians(angleDeg.toDouble())
+            val cosA = Math.cos(rad).toFloat()
+            val sinA = Math.sin(rad).toFloat()
+            val startDist = radius + 6f
+            val endDist = radius + 17f + if (angleDeg in 250f..290f) 5f else 0f
+            drawLine(
+                color = Color.Black,
+                start = Offset(centerX + cosA * startDist, baseY + sinA * startDist),
+                end = Offset(centerX + cosA * endDist, baseY + sinA * endDist),
+                strokeWidth = 3.5f,
+                cap = StrokeCap.Round
+            )
         }
     }
 }
