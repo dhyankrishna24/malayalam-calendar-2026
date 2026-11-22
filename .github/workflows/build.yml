@@ -52,19 +52,21 @@ jobs:
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0
-          name: Malayalam Calendar 2026 v1.0.0
+          tag_name: v1.0.${{ github.run_number }}
+          name: Malayalam Calendar 2026 v1.0.${{ github.run_number }} (Liquid Glass)
+          make_latest: true
           body: |
-            ## 📅 Malayalam Calendar 2026 (മലയാളം കലണ്ടർ)
+            ## 📅 Malayalam Calendar 2026 - Liquid Glass Edition (മലയാളം കലണ്ടർ)
             
             ### ✨ Features
+            - **💎 Liquid Glass UI**: Modern translucent frosted glass design with ambient lighting and glow effects.
             - **Clean & Ad-Free**: Pure calendar and Panchangam with zero ads, tracking, or bloatware.
             - **Interactive Day Details**: Click on any date to pull up Nakshatram, Tithi, Sunrise, Sunset, Rahu Kalam, Yamaganda, Gulikai Kalam, and Festivals.
             - **Kollam Era Dates**: Includes Malayalam month dates and transitions (Dhanu, Makaram, Kumbham...).
             - **Modern & Lightweight**: Built with Jetpack Compose and Material 3.
             
             ### 📥 Download
-            Download `Malayalam_Calendar_2026_Release.apk` or `Malayalam_Calendar_2026_Debug.apk` below and install directly on your Android phone (Android 6.0+ supported, including POCO F1).
+            Download `Malayalam_Calendar_2026_Release.apk` below and install directly on your Android phone (Android 6.0+ supported, including POCO F1).
           files: artifacts/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
