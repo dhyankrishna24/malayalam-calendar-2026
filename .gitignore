@@ -28,4 +28,5 @@ unknown/
 apktool.yml
 inspect_*.py
 test_*.py
+temp_apk/
 build_apk.ps1
